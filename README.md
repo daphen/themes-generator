@@ -7,79 +7,93 @@ A unified theme management system that maintains consistent colors across all de
 This system uses a centralized `colors.json` file to generate theme configurations for multiple tools, ensuring visual consistency across your entire development environment.
 
 ### Supported Tools
-- **Neovim** - Custom colorscheme with comprehensive syntax highlighting
-- **Fish Shell** - Terminal colors and prompt styling
+- **Neovim** - Custom colorscheme with full TreeSitter and LSP support
+- **Fish Shell** - Terminal colors
 - **FZF** - Fuzzy finder interface colors
-- **Ghostty** - Terminal emulator theme
-- **Tide** - Fish prompt framework (manual configuration)
+- **Tide** - Fish prompt framework
+- **Wezterm** - Terminal emulator theme
+- **Mako** - Notification daemon
+- **Waybar** - Status bar styling
+- **spotify-player** - Spotify TUI client
+- **opencode** - AI coding assistant
 
 ## Architecture
 
 ```
-themes/
+theme-generator/
 ├── colors.json          # Single source of truth for all colors
 ├── theme-manager.sh     # Generation and application script
+├── theme-processor.py   # Template processing engine
 ├── templates/           # Template files with placeholders
+│   ├── nvim-dark.template
+│   ├── nvim-light.template
 │   ├── fish.template
 │   ├── fzf.template
-│   ├── ghostty.template
-│   ├── nvim-custom.template
-│   └── nvim.template (Rose Pine fallback)
+│   ├── tide.template
+│   ├── wezterm.template
+│   ├── mako.template
+│   ├── waybar.template
+│   ├── spotify-player.template
+│   └── opencode.template
 └── generated/           # Auto-generated theme files
+    ├── nvim/
     ├── fish/
     ├── fzf/
-    ├── ghostty/
-    ├── nvim-custom/
-    └── nvim/
+    ├── tide/
+    ├── wezterm/
+    ├── mako/
+    ├── waybar/
+    ├── spotify-player/
+    └── opencode/
 ```
 
 ## Core Components
 
 ### 1. Colors Definition (`colors.json`)
 
-The central configuration file containing all color definitions:
+The central configuration file containing all color definitions organized by theme mode:
 
 ```json
 {
   "themes": {
     "dark": {
       "background": {
-        "primary": "#0A0A0A",      // Main background
-        "secondary": "#121212",     // Secondary background
-        "tertiary": "#1B1B1B",     // Lightest dark background
-        "selection": "#121E42",     // Selection background
-        "surface": "#121212",       // Floating surfaces
-        "overlay": "#2A2F39",       // Overlays and borders
-        "prompt": "#2A2F39"         // Prompt backgrounds
+        "primary": "#181818",
+        "secondary": "#1B1B1B",
+        "tertiary": "#1B1B1B",
+        "selection": "#282F38",
+        "surface": "#1B1B1B",
+        "overlay": "#292826",
+        "prompt": "#323A40"
       },
       "foreground": {
-        "primary": "#EDEDED",       // Main text
-        "secondary": "#D6DDEA",     // Secondary text
-        "muted": "#767676",         // Muted text
-        "subtle": "#7E8193"         // Subtle text
+        "primary": "#EDEDED",
+        "secondary": "#C3C8C6",
+        "muted": "#707B84",
+        "subtle": "#707B84"
       },
       "accent": {
-        "red": "#B85B53",
-        "orange": "#E9B872",
-        "yellow": "#E9B872",
-        "green": "#74BAA8",
-        "cyan": "#74BAA8",
-        "blue": "#6A8BE3",
-        "purple": "#BCB6EC",
-        "pink": "#A9B9EF"
+        "red": "#FF7B72",
+        "orange": "#FF570D",
+        "yellow": "#ff8a31",
+        "green": "#97B5A6",
+        "cyan": "#8A9AA6",
+        "blue": "#CCD5E4",
+        "purple": "#8A92A7",
+        "pink": "#8A92A7"
       },
       "semantic": {
-        "error": "#F71735",
-        "warning": "#FFA630",
-        "success": "#0EC256",
-        "info": "#1A8C9B",
-        "keyword": "#A9B9EF",
-        "command": "#6A8BE3",
-        "operator": "#b09884",
-        "comment": "#505050",
-        "string": "#74BAA8"
+        "error": "accent.red",
+        "warning": "accent.orange",
+        "keyword": "accent.green",
+        "string": "accent.blue",
+        "cursor": "#FF570D"
       },
-      "cursor": "#FF570D"
+      "terminal": {
+        "black": "background.tertiary",
+        "red": "accent.red",
+        "green": "accent.green"
+      }
     },
     "light": {
       // Light theme definitions...
@@ -88,266 +102,160 @@ The central configuration file containing all color definitions:
 }
 ```
 
+**Color References**: Semantic and terminal colors can reference other colors (e.g., `"error": "accent.red"`), which the processor resolves automatically.
+
 ### 2. Template System
 
-Templates use placeholder syntax to reference colors from `colors.json`:
+Templates use placeholder syntax `{{path.to.color}}` to reference colors:
+
+```lua
+-- Example from nvim-dark.template
+local c = {
+  bg = "{{dark.background.primary}}",
+  keyword = "{{dark.semantic.keyword}}",
+}
+```
 
 ```bash
 # Example from fzf.template
 --color=bg:{{background.primary}}
 --color=fg:{{foreground.primary}}
---color=pointer:{{cursor}}
 ```
 
 ### 3. Generation Process
 
-The `theme-manager.sh` script processes templates by:
-1. Reading color values from `colors.json`
-2. Replacing placeholders with actual color values
-3. Generating tool-specific configuration files
-4. Applying configurations to the appropriate locations
+The `theme-processor.py` script:
+1. Reads color values from `colors.json`
+2. Resolves chained references (semantic → accent → hex)
+3. Replaces `{{placeholders}}` with resolved colors
+4. Outputs tool-specific configuration files
 
 ## Commands
 
 ### Theme Manager Script
 
-All commands should be run from the `/themes/` directory:
-
 ```bash
-cd ~/.config/themes
-```
-
-#### Generate Themes
-```bash
-# Generate all themes for specific mode
+# Generate themes for specific mode
 ./theme-manager.sh generate dark
 ./theme-manager.sh generate light
 
-# Generate all themes for current system mode
-./theme-manager.sh generate
-```
-
-#### Apply Themes
-```bash
-# Apply all themes for specific mode
+# Apply themes for specific mode
 ./theme-manager.sh apply dark
 ./theme-manager.sh apply light
 
-# Apply all themes for current system mode
-./theme-manager.sh apply
-```
-
-#### Switch Themes
-```bash
-# Switch to specific theme mode
+# Switch theme (generate + apply)
 ./theme-manager.sh switch dark
 ./theme-manager.sh switch light
 
 # Toggle between light and dark
 ./theme-manager.sh toggle
 
-# Auto-detect and apply system theme
+# Auto-detect system theme
 ./theme-manager.sh auto
-```
 
-#### Status and Help
-```bash
-# Show current theme status
+# Show status
 ./theme-manager.sh status
 
-# Show help information
+# Show help
 ./theme-manager.sh help
-```
-
-### Fish Shell Commands
-
-```bash
-# Apply specific themes
-set_dark_theme
-set_light_theme
-
-# Toggle between themes
-toggle_theme
-
-# Check current theme
-echo $THEME_MODE
-```
-
-### Neovim Commands
-
-```vim
-" Reload current colorscheme
-:ReloadColors
-
-" Switch colorschemes manually
-:colorscheme custom-theme
-:colorscheme rose-pine
-```
-
-### Manual Theme Loading
-
-```bash
-# Load specific tool themes manually
-source ~/.config/themes/generated/fish/dark.theme
-source ~/.config/themes/generated/fzf/dark.theme
 ```
 
 ## Tool-Specific Integration
 
 ### Neovim
-- **Location**: `~/.config/nvim/lua/theme/`
-- **Colorscheme**: `custom-theme` (auto-loads from generated files)
-- **Fallback**: Rose Pine (if custom theme fails)
-- **Reload**: `<leader>rc` or `:ReloadColors`
 
-### Fish Shell
-- **Functions**: `set_dark_theme`, `set_light_theme`, `toggle_theme`
-- **Auto-load**: Functions source from generated theme files
-- **Integration**: Works with Tide prompt and FZF
+**Generated files**: `generated/nvim/dark.theme`, `generated/nvim/light.theme`
 
-### FZF
-- **Integration**: Loaded via Fish environment variables
-- **Colors**: Background, highlight, cursor/pointer colors
-- **Usage**: All fuzzy finders (Ctrl+R, file search, etc.)
+**Applied to**: `~/.config/nvim/colors/custom-theme-{dark,light}.lua`
 
-### Ghostty
-- **Location**: `~/.config/ghostty/themes/`
-- **Auto-switch**: `theme = light:light,dark:dark` in config
-- **Reload**: `Cmd+S > R` or restart Ghostty
+**Features**:
+- Full TreeSitter syntax highlighting
+- LSP semantic token support (explicitly linked to theme colors)
+- Plugin support (Telescope, Neo-tree, Lazy, Mason, GitSigns, blink.cmp, etc.)
 
-### Tide Prompt
-- **Manual Configuration**: Updated via Fish universal variables
-- **Background Colors**: Set to match theme tertiary background
-- **Segments**: Path, git status, command duration, etc.
+**Neovim config integration** (`colorscheme.lua`):
+- Reads `~/.config/theme_mode` to determine current theme
+- Watches file for live theme switching
+- Re-applies colorscheme on `LspAttach` to ensure correct LSP colors
 
-## Workflow Examples
+### Fish Shell / FZF / Tide
+
+**Auto-switching**: Add `theme_watcher.fish` to `~/.config/fish/conf.d/`:
+
+```fish
+# Theme watcher - automatically refresh when theme changes
+set -g __theme_watcher_last_mode ""
+
+function __theme_watcher_check --on-event fish_prompt
+    set -l theme_file "$HOME/.config/theme_mode"
+    set -l themes_dir "$HOME/.config/themes/generated"
+
+    if test -f $theme_file
+        set -l current_mode (cat $theme_file)
+        if test "$current_mode" != "$__theme_watcher_last_mode"
+            set -g __theme_watcher_last_mode $current_mode
+
+            # Source fish and fzf themes (tide stays dark)
+            source "$themes_dir/fish/$current_mode.theme" 2>/dev/null
+            source "$themes_dir/fzf/$current_mode.theme" 2>/dev/null
+        end
+    end
+end
+
+# Always use dark Tide (looks good in both modes)
+source "$HOME/.config/themes/generated/tide/dark.theme" 2>/dev/null
+
+__theme_watcher_check
+```
+
+### Wezterm
+
+**Generated file**: `generated/wezterm/{dark,light}.theme`
+
+Wezterm config should require the generated theme:
+```lua
+local colors = require('path.to.generated.wezterm.dark')
+config.colors = colors
+```
+
+Wezterm hot-reloads when the file changes.
+
+### Mako / Waybar
+
+**Applied to**:
+- Mako: `~/.config/mako/config`
+- Waybar: `~/.config/waybar/style.css`
+
+Both are automatically reloaded when applied.
+
+## Workflow
 
 ### Daily Usage
 ```bash
-# Auto-apply system theme
-./theme-manager.sh auto
-
-# Toggle between light/dark
+# Toggle between themes
 ./theme-manager.sh toggle
 ```
 
-### Development Workflow
+### Modifying Colors
 ```bash
-# 1. Edit colors in colors.json
+# 1. Edit colors.json
 vim colors.json
 
-# 2. Regenerate all themes
-./theme-manager.sh generate dark
-
-# 3. Apply to all tools
-./theme-manager.sh apply dark
-
-# 4. Reload Neovim (if open)
-# In Neovim: :ReloadColors
+# 2. Regenerate and apply
+./theme-manager.sh switch dark
 ```
 
-### Adding New Tools
+### Adding a New Tool
 
-1. **Create Template**: Add new template file in `templates/`
-2. **Update Script**: Add tool handling in `theme-manager.sh`
-3. **Test**: Generate and apply themes
-4. **Document**: Update this README
+1. Create template in `templates/newtool.template`
+2. Use `{{path.to.color}}` placeholders
+3. Add apply logic to `theme-manager.sh` if needed
+4. Run `./theme-manager.sh generate dark`
 
-## Color Customization
+## Dependencies
 
-### Modifying Colors
-1. Edit `colors.json` with new color values
-2. Run `./theme-manager.sh generate [mode]`
-3. Run `./theme-manager.sh apply [mode]`
-4. Reload tools as needed
-
-### Adding New Colors
-1. Add color definition to `colors.json`
-2. Update relevant templates to use new color
-3. Regenerate and apply themes
-
-### Best Practices
-- **Test in both modes**: Always verify light and dark themes
-- **Use semantic names**: Prefer `error` over `red` for context
-- **Maintain contrast**: Ensure readability across all tools
-- **Backup**: Commit changes to version control
-
-## Troubleshooting
-
-### Common Issues
-
-**Themes not applying**:
-```bash
-# Check file permissions
-ls -la generated/
-# Regenerate themes
-./theme-manager.sh generate dark
-```
-
-**Neovim errors**:
-```vim
-" Check colorscheme availability
-:colorscheme <Tab>
-" Reload theme manually
-:ReloadColors
-```
-
-**Fish colors not updating**:
-```bash
-# Reload Fish configuration
-source ~/.config/fish/config.fish
-# Reapply theme
-set_dark_theme
-```
-
-**Tide backgrounds invisible**:
-```bash
-# Update Tide colors manually
-set -U tide_pwd_bg_color 1B1B1B
-set -U tide_git_bg_color 1B1B1B
-```
-
-### Log Files
-- **Theme Watcher**: `theme-watcher.log`
-- **Generation**: Check script output for errors
-
-## System Integration
-
-### Auto-Detection
-- **macOS**: Reads `AppleInterfaceStyle` for dark mode detection
-- **Fish Integration**: Theme functions called automatically
-- **Neovim**: `auto-dark-mode.nvim` plugin integration
-
-### Dependencies
-- **jq**: Required for JSON processing
-- **Fish Shell**: For theme switching functions
-- **Neovim**: For custom colorscheme integration
-
-## Advanced Usage
-
-### Custom Templates
-Create new templates using the placeholder syntax:
-```bash
-# Example: custom-tool.template
-background={{background.primary}}
-foreground={{foreground.primary}}
-accent={{accent.blue}}
-```
-
-### Scripting Integration
-```bash
-# Get current theme mode
-CURRENT_THEME=$(./theme-manager.sh status | grep "Current Theme" | cut -d: -f2)
-
-# Programmatic theme switching
-if [[ $(date +%H) -gt 18 ]]; then
-    ./theme-manager.sh switch dark
-else
-    ./theme-manager.sh switch light
-fi
-```
-
----
+- **Python 3** - For template processing
+- **jq** - For JSON parsing in shell script
 
 ## Quick Reference
 
@@ -356,12 +264,5 @@ fi
 | Switch to dark | `./theme-manager.sh switch dark` |
 | Switch to light | `./theme-manager.sh switch light` |
 | Toggle themes | `./theme-manager.sh toggle` |
-| Auto-detect | `./theme-manager.sh auto` |
 | Regenerate all | `./theme-manager.sh generate` |
-| Apply all | `./theme-manager.sh apply` |
 | Check status | `./theme-manager.sh status` |
-| Reload Neovim | `:ReloadColors` |
-| Fish dark theme | `set_dark_theme` |
-| Fish light theme | `set_light_theme` |
-
-For questions or issues, check the troubleshooting section or review the generated files in `themes/generated/`.
