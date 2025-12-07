@@ -147,98 +147,96 @@ apply_tool_theme() {
 
     case "$tool" in
         "nvim")
-            # Copy generated colorscheme to nvim colors directory
-            cp "$generated_file" "$HOME/.config/nvim/colors/custom-theme-${theme_mode}.lua"
-            log_success "Applied Neovim ${theme_mode} theme"
+            if [[ -d "$HOME/.config/nvim" ]]; then
+                mkdir -p "$HOME/.config/nvim/colors"
+                cp "$generated_file" "$HOME/.config/nvim/colors/custom-theme-${theme_mode}.lua"
+                log_success "Applied Neovim ${theme_mode} theme"
+            fi
             ;;
         "mako")
-            # Copy generated config to mako directory
-            cp "$generated_file" "$HOME/.config/mako/config"
-            # Reload mako if running
-            if pgrep -x mako > /dev/null; then
-                makoctl reload
-                log_success "Applied and reloaded Mako theme"
-            else
-                log_success "Applied Mako theme (not running)"
+            if [[ -d "$HOME/.config/mako" ]] || command -v mako &> /dev/null; then
+                mkdir -p "$HOME/.config/mako"
+                cp "$generated_file" "$HOME/.config/mako/config"
+                if pgrep -x mako > /dev/null; then
+                    makoctl reload
+                    log_success "Applied and reloaded Mako theme"
+                else
+                    log_success "Applied Mako theme (not running)"
+                fi
             fi
             ;;
         "waybar")
-            # Copy generated style to waybar directory
-            cp "$generated_file" "$HOME/.config/waybar/style.css"
-            # Reload waybar if running
-            if pgrep -x waybar > /dev/null; then
-                killall -SIGUSR2 waybar
-                log_success "Applied and reloaded Waybar theme"
-            else
-                log_success "Applied Waybar theme (not running)"
+            if [[ -d "$HOME/.config/waybar" ]] || command -v waybar &> /dev/null; then
+                mkdir -p "$HOME/.config/waybar"
+                cp "$generated_file" "$HOME/.config/waybar/style.css"
+                if pgrep -x waybar > /dev/null; then
+                    killall -SIGUSR2 waybar
+                    log_success "Applied and reloaded Waybar theme"
+                else
+                    log_success "Applied Waybar theme (not running)"
+                fi
             fi
             ;;
         "fish")
-            # Fish themes are applied by Fish itself, not by bash
-            # Just log success since Fish will source it when needed
-            log_success "Fish theme generated (will be applied by Fish shells)"
+            if command -v fish &> /dev/null; then
+                log_success "Fish theme generated (will be applied by Fish shells)"
+            fi
             ;;
         "ghostty")
-            # Copy generated theme to ghostty themes directory
-            cp "$generated_file" "$HOME/.config/ghostty/themes/$theme_mode"
-            log_success "Generated and copied Ghostty theme"
-            # Note: Ghostty auto-detects system theme changes via 'theme = light:light,dark:dark'
-            # so we don't need to trigger a reload
+            if [[ -d "$HOME/.config/ghostty" ]] || command -v ghostty &> /dev/null; then
+                mkdir -p "$HOME/.config/ghostty/themes"
+                cp "$generated_file" "$HOME/.config/ghostty/themes/$theme_mode"
+                log_success "Generated and copied Ghostty theme"
+            fi
             ;;
         "tmux")
-            # Apply tmux theme (may require tmux reload)
-            if tmux list-sessions &> /dev/null; then
-                tmux source-file "$generated_file"
-                log_success "Applied Tmux theme"
-            else
-                log_warning "Tmux not running, theme will apply on next start"
+            if command -v tmux &> /dev/null; then
+                if tmux list-sessions &> /dev/null; then
+                    tmux source-file "$generated_file"
+                    log_success "Applied Tmux theme"
+                else
+                    log_success "Tmux theme generated (will apply on next start)"
+                fi
             fi
             ;;
         "fzf")
-            # FZF themes are applied by Fish shell, not by bash
-            # Just log success since Fish will source it when needed
-            log_success "FZF theme generated (will be applied by Fish shells)"
+            if command -v fzf &> /dev/null; then
+                log_success "FZF theme generated (will be applied by Fish shells)"
+            fi
             ;;
         "tide")
-            # Apply Tide prompt colors by sourcing the generated file directly
             if command -v fish &> /dev/null; then
-                # Source the file directly in fish for maximum performance and reliability
                 fish -c "source '$generated_file'"
                 log_success "Applied Tide prompt theme"
-            else
-                log_warning "Fish shell not found, Tide theme not applied"
             fi
             ;;
         "wezterm")
-            # Copy generated theme to wezterm directory
-            mkdir -p "$HOME/.config/wezterm/colors"
-            cp "$generated_file" "$HOME/.config/wezterm/colors/${theme_mode}.lua"
-            # Wezterm hot-reloads on config touch (handled in apply_system_theme)
-            log_success "Applied Wezterm ${theme_mode} theme"
+            if [[ -d "$HOME/.config/wezterm" ]] || command -v wezterm &> /dev/null; then
+                mkdir -p "$HOME/.config/wezterm/colors"
+                cp "$generated_file" "$HOME/.config/wezterm/colors/${theme_mode}.lua"
+                log_success "Applied Wezterm ${theme_mode} theme"
+            fi
             ;;
         "spotify-player")
-            # Copy generated theme to spotify-player config
-            local spotify_theme_dir="$HOME/.config/spotify-player"
-            mkdir -p "$spotify_theme_dir"
-            cp "$generated_file" "$spotify_theme_dir/theme.toml"
-            log_success "Applied spotify-player theme (restart app to apply)"
+            if [[ -d "$HOME/.config/spotify-player" ]] || command -v spotify_player &> /dev/null; then
+                mkdir -p "$HOME/.config/spotify-player"
+                cp "$generated_file" "$HOME/.config/spotify-player/theme.toml"
+                log_success "Applied spotify-player theme (restart app to apply)"
+            fi
             ;;
         "rofi")
-            # Update rofi config.rasi to import the correct theme
             local rofi_config="$HOME/.config/rofi/config.rasi"
             if [[ -f "$rofi_config" ]]; then
                 sed -i "s/@import \".*\.rasi\"/@import \"${theme_mode}.rasi\"/" "$rofi_config"
                 log_success "Applied Rofi ${theme_mode} theme"
-            else
-                log_warning "Rofi config not found: $rofi_config"
             fi
             ;;
         "opencode")
-            # Copy generated theme to opencode config
-            local opencode_dir="$HOME/.config/opencode"
-            mkdir -p "$opencode_dir"
-            cp "$generated_file" "$opencode_dir/theme.json"
-            log_success "Applied opencode theme"
+            if [[ -d "$HOME/.config/opencode" ]] || command -v opencode &> /dev/null; then
+                mkdir -p "$HOME/.config/opencode"
+                cp "$generated_file" "$HOME/.config/opencode/theme.json"
+                log_success "Applied opencode theme"
+            fi
             ;;
         *)
             log_warning "Unknown tool: $tool"
