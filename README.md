@@ -229,10 +229,69 @@ When you press `Super+Ctrl+T` (or your configured keybind), here's what happens:
 - LSP semantic token support (explicitly linked to theme colors)
 - Plugin support (Telescope, Neo-tree, Lazy, Mason, GitSigns, blink.cmp, etc.)
 
-**Neovim config integration** (`colorscheme.lua`):
-- Reads `~/.config/theme_mode` to determine current theme
-- Watches file for live theme switching
-- Re-applies colorscheme on `LspAttach` to ensure correct LSP colors
+**Setup**:
+
+1. Copy generated themes to nvim colors directory:
+```bash
+cp generated/nvim/dark.theme ~/.config/nvim/colors/custom-theme-dark.lua
+cp generated/nvim/light.theme ~/.config/nvim/colors/custom-theme-light.lua
+```
+
+2. Create `~/.config/nvim/lua/plugins/colorscheme.lua`:
+```lua
+return {
+  {
+    "nvim-lua/plenary.nvim", -- Use an existing dependency as anchor
+    lazy = false,
+    priority = 1000,
+    config = function()
+      -- Function to read theme mode from file
+      local function read_theme_mode()
+        local theme_file = vim.fn.expand("~/.config/theme_mode")
+        local file = io.open(theme_file, "r")
+        if file then
+          local mode = file:read("*line")
+          file:close()
+          return mode == "light" and "light" or "dark"
+        end
+        return "dark"
+      end
+
+      -- Function to apply theme
+      local function apply_theme()
+        local theme_mode = read_theme_mode()
+        vim.cmd.colorscheme("custom-theme-" .. theme_mode)
+      end
+
+      -- Apply initial theme
+      apply_theme()
+
+      -- Re-apply theme when LSP attaches to ensure @lsp highlights take effect
+      vim.api.nvim_create_autocmd("LspAttach", {
+        callback = function()
+          vim.defer_fn(apply_theme, 10)
+        end,
+      })
+
+      -- Watch theme_mode file for changes (live switching)
+      local theme_mode_file = vim.fn.expand("~/.config/theme_mode")
+      local watch_handle = vim.uv.new_fs_event()
+      if watch_handle then
+        watch_handle:start(theme_mode_file, {}, vim.schedule_wrap(function(err)
+          if not err then
+            vim.defer_fn(apply_theme, 50)
+          end
+        end))
+      end
+    end,
+  },
+}
+```
+
+**How it works**:
+- Reads `~/.config/theme_mode` to determine current theme ("dark" or "light")
+- Uses `vim.uv.new_fs_event()` to watch the file for live theme switching
+- Re-applies colorscheme on `LspAttach` to ensure LSP semantic tokens use correct colors
 
 ### Fish Shell / FZF / Tide
 
