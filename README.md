@@ -12,8 +12,10 @@ This system uses a centralized `colors.json` file to generate theme configuratio
 - **FZF** - Fuzzy finder interface colors
 - **Tide** - Fish prompt framework
 - **Wezterm** - Terminal emulator theme
+- **Ghostty** - Terminal emulator theme
 - **Mako** - Notification daemon
 - **Waybar** - Status bar styling
+- **Rofi** - Application launcher
 - **spotify-player** - Spotify TUI client
 - **opencode** - AI coding assistant
 
@@ -31,6 +33,7 @@ theme-generator/
 │   ├── fzf.template
 │   ├── tide.template
 │   ├── wezterm.template
+│   ├── ghostty.template
 │   ├── mako.template
 │   ├── waybar.template
 │   ├── spotify-player.template
@@ -41,6 +44,7 @@ theme-generator/
     ├── fzf/
     ├── tide/
     ├── wezterm/
+    ├── ghostty/
     ├── mako/
     ├── waybar/
     ├── spotify-player/
@@ -167,32 +171,35 @@ When you press `Super+Ctrl+T` (or your configured keybind), here's what happens:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  Keybind (niri/sway/etc)                                        │
-│  Super+Ctrl+T → fish -c toggle_theme                            │
+│  Super+Ctrl+T → ~/.config/themes/theme-manager.sh toggle        │
 └─────────────────────┬───────────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  toggle_theme (Fish function)                                   │
+│  theme-manager.sh toggle                                        │
 │  1. Read current theme from ~/.config/theme_mode                │
 │  2. Write new theme ("dark" or "light") to file                 │
-│  3. Call set_dark_theme or set_light_theme                      │
+│  3. Generate all themes for the new mode                        │
+│  4. Apply all themes                                            │
+│  5. Apply system-wide settings (GTK, gsettings)                 │
 └─────────────────────┬───────────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  set_dark_theme / set_light_theme (Fish functions)              │
+│  Apply step copies generated themes to final locations:         │
 │                                                                 │
-│  Direct updates:                                                │
-│  • Fish colors     → source generated/fish/{mode}.theme         │
-│  • FZF colors      → set_fzf_colors function                    │
-│  • Tide prompt     → always dark (looks good in both modes)     │
-│  • GTK settings    → update settings.ini + gsettings            │
+│  • Neovim      → ~/.config/nvim/colors/custom-theme-{mode}.lua  │
+│  • Wezterm     → ~/.config/wezterm/colors/{mode}.lua + touch    │
+│  • Ghostty     → ~/.config/ghostty/themes/{mode}                │
+│  • Mako        → ~/.config/mako/config + makoctl reload         │
+│  • Waybar      → ~/.config/waybar/style.css + SIGUSR2           │
+│  • Rofi        → update @import in config.rasi                  │
+│  • spotify-player → ~/.config/spotify-player/theme.toml         │
+│  • Tide        → fish -c source (prompt colors)                 │
 │                                                                 │
-│  File copy + reload:                                            │
-│  • Wezterm         → touch config to trigger hot-reload         │
-│  • Mako            → cp to ~/.config/mako/config + makoctl reload│
-│  • Waybar          → cp to ~/.config/waybar/style.css + SIGUSR2 │
-│  • spotify-player  → cp to theme.toml (restart required)        │
+│  System settings:                                               │
+│  • GTK 3.0/4.0 → update settings.ini                            │
+│  • gsettings   → color-scheme preference                        │
 └─────────────────────────────────────────────────────────────────┘
                       │
                       │ (parallel - via file watchers)
@@ -200,8 +207,8 @@ When you press `Super+Ctrl+T` (or your configured keybind), here's what happens:
 ┌─────────────────────────────────────────────────────────────────┐
 │  Auto-updating apps (watch ~/.config/theme_mode)                │
 │                                                                 │
-│  • Neovim          → vim.uv file watcher in colorscheme.lua     │
-│                      re-applies colorscheme on change           │
+│  • Neovim      → vim.uv file watcher re-applies colorscheme     │
+│  • Fish prompt → theme_watcher.fish sources colors on prompt    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -210,11 +217,9 @@ When you press `Super+Ctrl+T` (or your configured keybind), here's what happens:
 | File | Purpose |
 |------|---------|
 | `~/.config/theme_mode` | Stores current theme ("dark" or "light") |
-| `~/.config/fish/functions/toggle_theme.fish` | Main toggle function |
-| `~/.config/fish/functions/set_dark_theme.fish` | Applies dark theme to all apps |
-| `~/.config/fish/functions/set_light_theme.fish` | Applies light theme to all apps |
+| `~/.config/themes/theme-manager.sh` | Main theme switching script |
 | `~/.config/nvim/lua/plugins/colorscheme.lua` | Neovim file watcher |
-| `~/.config/fish/conf.d/theme_watcher.fish` | Fish prompt theme checker |
+| `~/.config/fish/conf.d/theme_watcher.fish` | Fish prompt theme checker (optional) |
 
 ## Tool-Specific Integration
 
@@ -291,33 +296,46 @@ return {
 
 ### Fish Shell / FZF / Tide
 
-- **Fish & FZF**: Switch with system theme
-- **Tide**: Always uses dark theme (looks good on both light and dark backgrounds)
+**Generated files**: `generated/fish/{dark,light}.theme`, `generated/fzf/{dark,light}.theme`, `generated/tide/{dark,light}.theme`
 
-**Auto-switching**: The `theme_watcher.fish` in `~/.config/fish/conf.d/` handles this:
+- **Fish & FZF**: Themes are generated and available for fish to source
+- **Tide**: Prompt colors applied via `fish -c source`
+
+**Optional auto-switching**: The `theme_watcher.fish` in `~/.config/fish/conf.d/` can handle prompt-level switching:
 - Checks `~/.config/theme_mode` on each prompt
 - Sources Fish and FZF themes when mode changes
-- Always sources dark Tide theme on shell start
+
+Note: Terminal colors change instantly via Wezterm hot-reload, not Fish.
 
 ### Wezterm
 
 **Generated file**: `generated/wezterm/{dark,light}.theme`
 
-Wezterm config should require the generated theme:
-```lua
-local colors = require('path.to.generated.wezterm.dark')
-config.colors = colors
-```
+**Applied to**: `~/.config/wezterm/colors/{dark,light}.lua`
 
-Wezterm hot-reloads when the file changes.
+Wezterm hot-reloads automatically when its config file is touched (handled by theme-manager.sh).
+
+### Ghostty
+
+**Generated file**: `generated/ghostty/{dark,light}.theme`
+
+**Applied to**: `~/.config/ghostty/themes/{dark,light}`
+
+Ghostty can auto-detect system theme via config: `theme = light:light,dark:dark`
 
 ### Mako / Waybar
 
 **Applied to**:
-- Mako: `~/.config/mako/config`
-- Waybar: `~/.config/waybar/style.css`
+- Mako: `~/.config/mako/config` (reloaded via `makoctl reload`)
+- Waybar: `~/.config/waybar/style.css` (reloaded via `SIGUSR2`)
 
 Both are automatically reloaded when applied.
+
+### Rofi
+
+Rofi theme switching works by updating the `@import` statement in `~/.config/rofi/config.rasi`.
+
+Requires existing `dark.rasi` and `light.rasi` theme files in `~/.config/rofi/`.
 
 ## Workflow
 
@@ -345,8 +363,13 @@ vim colors.json
 
 ## Dependencies
 
+**Required**:
 - **Python 3** - For template processing
 - **jq** - For JSON parsing in shell script
+- **Bash** - For the theme manager script
+
+**Optional** (theme-manager.sh gracefully skips missing tools):
+- Fish shell, Neovim, Wezterm, Ghostty, Mako, Waybar, Rofi, spotify-player, etc.
 
 ## Quick Reference
 
