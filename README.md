@@ -231,11 +231,7 @@ When you press `Super+Ctrl+T` (or your configured keybind), here's what happens:
 
 **Setup**:
 
-1. Copy generated themes to nvim colors directory:
-```bash
-cp generated/nvim/dark.theme ~/.config/nvim/colors/custom-theme-dark.lua
-cp generated/nvim/light.theme ~/.config/nvim/colors/custom-theme-light.lua
-```
+1. Run `./theme-manager.sh switch dark` and `./theme-manager.sh switch light` once to generate and apply themes (copies to `~/.config/nvim/colors/`)
 
 2. Create `~/.config/nvim/lua/plugins/colorscheme.lua`:
 ```lua
