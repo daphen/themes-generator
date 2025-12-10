@@ -11,11 +11,13 @@ This system uses a centralized `colors.json` file to generate theme configuratio
 - **Fish Shell** - Terminal colors
 - **FZF** - Fuzzy finder interface colors
 - **Tide** - Fish prompt framework
-- **Wezterm** - Terminal emulator theme
+- **Kitty** - Terminal emulator theme
 - **Ghostty** - Terminal emulator theme
+- **Wezterm** - Terminal emulator theme
 - **Mako** - Notification daemon
 - **Waybar** - Status bar styling
 - **Rofi** - Application launcher
+- **Clipse** - Clipboard manager
 - **spotify-player** - Spotify TUI client
 - **opencode** - AI coding assistant
 
@@ -33,10 +35,12 @@ theme-generator/
 │   ├── fish.template
 │   ├── fzf.template
 │   ├── tide.template
-│   ├── wezterm.template
+│   ├── kitty.template
 │   ├── ghostty.template
+│   ├── wezterm.template
 │   ├── mako.template
 │   ├── waybar.template
+│   ├── clipse.template
 │   ├── spotify-player.template
 │   └── opencode.template
 └── generated/           # Auto-generated theme files
@@ -44,10 +48,12 @@ theme-generator/
     ├── fish/
     ├── fzf/
     ├── tide/
-    ├── wezterm/
+    ├── kitty/
     ├── ghostty/
+    ├── wezterm/
     ├── mako/
     ├── waybar/
+    ├── clipse/
     ├── spotify-player/
     └── opencode/
 ```
@@ -190,11 +196,13 @@ When you press `Super+Ctrl+T` (or your configured keybind), here's what happens:
 │  Apply step copies generated themes to final locations:         │
 │                                                                 │
 │  • Neovim      → ~/.config/nvim/colors/custom-theme-{mode}.lua  │
-│  • Wezterm     → ~/.config/wezterm/colors/{mode}.lua + touch    │
+│  • Kitty       → ~/.config/kitty/theme.conf + live reload       │
 │  • Ghostty     → ~/.config/ghostty/themes/{mode}                │
+│  • Wezterm     → ~/.config/wezterm/colors/{mode}.lua + touch    │
 │  • Mako        → ~/.config/mako/config + makoctl reload         │
 │  • Waybar      → ~/.config/waybar/style.css + SIGUSR2           │
 │  • Rofi        → update @import in config.rasi                  │
+│  • Clipse      → ~/.config/clipse/custom_theme.json             │
 │  • spotify-player → ~/.config/spotify-player/theme.toml         │
 │  • Tide        → fish -c source (prompt colors)                 │
 │                                                                 │
@@ -306,7 +314,15 @@ return {
 - Checks `~/.config/theme_mode` on each prompt
 - Sources Fish and FZF themes when mode changes
 
-Note: Terminal colors change instantly via Wezterm hot-reload, not Fish.
+Note: Terminal colors change instantly via terminal emulator hot-reload, not Fish.
+
+### Kitty
+
+**Generated file**: `generated/kitty/{dark,light}.theme`
+
+**Applied to**: `~/.config/kitty/theme.conf`
+
+Kitty supports live theme reloading via `kitty @ set-colors`. The theme-manager automatically reloads all running Kitty instances when the theme changes.
 
 ### Wezterm
 
@@ -337,6 +353,14 @@ Both are automatically reloaded when applied.
 Rofi theme switching works by updating the `@import` statement in `~/.config/rofi/config.rasi`.
 
 Requires existing `dark.rasi` and `light.rasi` theme files in `~/.config/rofi/`.
+
+### Clipse
+
+**Generated file**: `generated/clipse/{dark,light}.theme`
+
+**Applied to**: `~/.config/clipse/custom_theme.json`
+
+Clipse clipboard manager theme is applied automatically. Restart clipse to see changes.
 
 ## Theme Editor Webapp
 
