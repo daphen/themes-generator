@@ -238,6 +238,26 @@ apply_tool_theme() {
                 log_success "Applied opencode theme"
             fi
             ;;
+        "clipse")
+            if [[ -d "$HOME/.config/clipse" ]] || command -v clipse &> /dev/null; then
+                mkdir -p "$HOME/.config/clipse"
+                cp "$generated_file" "$HOME/.config/clipse/custom_theme.json"
+                log_success "Applied clipse theme"
+            fi
+            ;;
+        "kitty")
+            if [[ -d "$HOME/.config/kitty" ]] || command -v kitty &> /dev/null; then
+                mkdir -p "$HOME/.config/kitty"
+                cp "$generated_file" "$HOME/.config/kitty/theme.conf"
+                # Reload all kitty instances
+                if pgrep -x kitty > /dev/null; then
+                    for socket in /tmp/kitty-*; do
+                        kitty @ --to "unix:$socket" set-colors -a -c "$generated_file" 2>/dev/null || true
+                    done
+                fi
+                log_success "Applied kitty theme"
+            fi
+            ;;
         *)
             log_warning "Unknown tool: $tool"
             return 1
